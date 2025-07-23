@@ -77,7 +77,7 @@ const App: React.FC = () => {
                 {reports.map(report => (
                     <div key={report.id} style={{ marginBottom: '1rem' }}>
                         <button onClick={() => loadReport(report)} style={{ width: '100%' }}>
-                            {report.name}
+                            {report.name} 
                         </button>
                     </div>
                 ))}

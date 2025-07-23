@@ -102,7 +102,7 @@ app.post('/api/embed-token', async (req, res) => {
       // error handling
     } catch (error) {
         console.error('Power BI embed token generation failed:', error.response?.data || error.message);
-        res.status(500).json({ error: 'Embed token generation failed' });
+        res.status(500).json({ error: ' Embed token generation failed' });
     }
 });
 
