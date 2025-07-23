@@ -15,7 +15,7 @@
     "@azure/msal-browser": "^4.15.0",
     "@azure/msal-react": "^3.0.15",
     "@devexpress/analytics-core": "^24.2.7",
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "devexpress-dashboard": "^24.2.7",
     "devexpress-dashboard-react": "^24.2.7",
     "devextreme": "^24.2.7",

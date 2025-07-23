@@ -16,57 +16,88 @@ dotenv.config();
 
 // middleware
 // enables cors so that frontend can communicate with backend
-app.use(cors({
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(cors());
 
 // parse the incoming json bodys
 app.use(express.json());
 
-// get the workspace adn report id from the .env file (keeps secrets out of code)
-const WORKSPACE_ID = process.env.WORKSPACE_ID;
-const REPORT_ID = process.env.REPORT_ID;
+// get from .env file (keeps secrets out of code)
+const {
+    AZURE_TENANT_ID,
+    AZURE_CLIENT_ID,
+    AZURE_CLIENT_SECRET,
+    POWERBI_API_SCOPE,
+    WORKSPACE_ID,
+    PORT
+} = process.env;
+
+// get access token using client credentials
+async function getPowerBIAccessToken() {
+    const url = `https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token`;
+    const form = new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: AZURE_CLIENT_ID,
+        client_secret: AZURE_CLIENT_SECRET,
+        scope: POWERBI_API_SCOPE
+    });
+    
+    const response = await axios.post(url, form);
+    return response.data.access_token;
+}
+
+// get all reports in a workspace
+app.get('/api/reports', async (req, res) => {
+    try{
+        const token = await getPowerBIAccessToken();
+        const response = await axios.get(`https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        res.json(response.data.value);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch reports' });
+    }
+})
 
 // read access token from request body
 app.post('/api/embed-token', async (req, res) => {
-    const { accessToken } = req.body;
+    const { reportId } = req.body;
 
-    if (!accessToken) {
-        return res.status(400).json({ error: 'Missing access token from frontend' });
+    if (!reportId) {
+        return res.status(400).json({ error: 'ReportId required' });
     }
 
     // use that access token to authorize a call to Power BIs API
     try {
-        const response = await axios.post(
-            `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports/${REPORT_ID}/GenerateToken`,
+        const token = await getPowerBIAccessToken();
+        
+        const embedResponse = await axios.post(
+            `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports/${reportId}/GenerateToken`,
             { accessLevel: 'View' },
             {
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );
-
-        // get the embed token from API repsonse
-        const embedToken = response.data.token;
 
         // make another call to the embed url
         const reportDetails = await axios.get(
-            `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports/${REPORT_ID}`,
+            `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports/${reportId}`,
             {
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );
 
-        // get the embed url from API response
-        const embedUrl = reportDetails.data.embedUrl;
-
         // send embedToken, embedUrl, adn reportId back to frontend to use
-        res.json({ embedToken, embedUrl, reportId: REPORT_ID });
+        res.json({
+            embedToken: embedResponse.data.token, 
+            embedUrl: reportDetails.data.embedUrl,
+            reportId: reportDetails.data.reportId,
+            reportType: reportDetails.data.reportType
+        });
         
       // error handling
     } catch (error) {
