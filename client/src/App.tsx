@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 
-// react wrapper fro pwoer bi js sdk
+// react wrapper fro power bi js sdk
 import { PowerBIEmbed } from 'powerbi-client-react';
 // power bi constants/enums
 import * as powerbi from 'powerbi-client';
@@ -23,10 +23,9 @@ interface EmbedTokenResponse {
     reportType: "PowerBIReport" | "PaginatedReport";
 }
 
-// creates react componenet
 const App: React.FC = () => {
     const [reports, setReports] = useState<Report[]>([]);
-    //power bi configuration
+    
     const [embedConfig, setEmbedConfig] = useState<powerbi.IEmbedConfiguration | null>(null);
     const [embedKey, setEmbedKey] = useState<string>('');
     const embedRef = useRef<HTMLDivElement | null>(null);
@@ -37,7 +36,6 @@ const App: React.FC = () => {
         .catch(err => console.log(err));
     }, []);
     
-    // function load and embed a report
     const loadReport = async (report: Report) => {
             try {
                 if (embedRef.current) {
@@ -49,12 +47,10 @@ const App: React.FC = () => {
                     {reportId: report.id}
                 );
                 
-                // backend returns the embedToken, embedUrl, and reportId, all needed in PowerBIEmbed Tag
                 const {embedToken, embedUrl, reportId: id, reportType} = res.data;
                 const typeOfReport = reportType === 'PaginatedReport' ? 'paginatedReport' : 'report';
 
-                // set the configuration need for PowerBIEmbed
-                //settings for embed itself (cna be altered easily)
+                
                 setEmbedConfig(null);
                 console.log(embedConfig);
                 setTimeout(() => {
@@ -79,8 +75,7 @@ const App: React.FC = () => {
                 }
     };
 
-    /* If embedConfig is set up simply returns the embed report itself
-    PowerBIEmbed is wrapper that renders and handles an iframe */
+    
     return (
         <div style={{ display: 'flex', height: '100vh' }}>
             <div style={{ width: '250px', padding: '1rem', background: '#0967d2', overflowY: 'auto' }}>
