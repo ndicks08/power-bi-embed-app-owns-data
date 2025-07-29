@@ -4,7 +4,7 @@ const cors = require("cors");
 // web server framework
 const express = require('express');
 
-// http client to call pwoer bi apis
+// http client to call power bi apis
 const axios = require('axios');
 
 // loads env variables
@@ -31,7 +31,8 @@ const {
     PORT
 } = process.env;
 
-// get access token using client credentials
+// get access token using client credentials flow (must be turned on in azure app regisration)
+// token is then used to authenticate power bi rest api calls
 async function getPowerBIAccessToken() {
     const url = `https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token`;
     const form = new URLSearchParams({
@@ -45,13 +46,14 @@ async function getPowerBIAccessToken() {
     return response.data.access_token;
 }
 
-// get all reports in a workspace
+// get all reports in a specific workspace
 app.get('/api/reports', async (req, res) => {
     try{
         const token = await getPowerBIAccessToken();
         const response = await axios.get(`https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports`, {
             headers: { Authorization: `Bearer ${token}` }
         });
+        // returns the list of reports (not metadata)
         res.json(response.data.value);
     } catch (err) {
         console.error(err);
@@ -59,7 +61,7 @@ app.get('/api/reports', async (req, res) => {
     }
 })
 
-// read access token from request body
+// get embed token and report information for a specific report
 app.post('/api/embed-token', async (req, res) => {
     const { reportId } = req.body;
 
@@ -71,9 +73,10 @@ app.post('/api/embed-token', async (req, res) => {
     try {
         const token = await getPowerBIAccessToken();
         
+        // generate the embed token
         const embedResponse = await axios.post(
             `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports/${reportId}/GenerateToken`,
-            { accessLevel: 'View' },
+            { accessLevel: 'View' }, // can be "Edit" as well
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -81,7 +84,7 @@ app.post('/api/embed-token', async (req, res) => {
             }
         );
 
-        // make another call to the embed url
+        // get reports metadata including the embed url
         const reportDetails = await axios.get(
             `https://api.powerbi.com/v1.0/myorg/groups/${WORKSPACE_ID}/reports/${reportId}`,
             {
@@ -91,7 +94,7 @@ app.post('/api/embed-token', async (req, res) => {
             }
         );
 
-        // send embedToken, embedUrl, adn reportId back to frontend to use
+        // send embedToken, embedUrl, reportType, and reportId back to frontend to use
         res.json({
             embedToken: embedResponse.data.token, 
             embedUrl: reportDetails.data.embedUrl,
